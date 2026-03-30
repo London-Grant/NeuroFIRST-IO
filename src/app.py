@@ -1,7 +1,10 @@
 import fastapi
+import uvicorn
 from pydantic import BaseModel
 from typing import Literal
 from enum import Enum
+
+import ml
 
 app = fastapi.FastAPI()
 
@@ -38,16 +41,16 @@ symptoms = {"s01": {"severity": Severity.CRITICAL},
     "s22": {"severity": Severity.MINOR},
     "s23": {"severity": Severity.MINOR},
 }
-onset_weights = {'Sudden': .5, 'Rapid': .25, 'Gradual': -.5, 'Fluctuating': 0}
+# onset_weights = {'Sudden': .5, 'Rapid': .25, 'Gradual': -.5, 'Fluctuating': 0}
 
 
 class UrgencyModel(BaseModel):
     age:int
     sex:str = Literal['Male', 'Female', 'Other']
     symptom_duration_num:int
-    symptom_duration_qualifier: Literal['min', 'hrs', 'days', 'wks', 'mos']
+    symptom_duration_qualifier: Literal['hrs', 'days', 'wks', 'mos']
     # symptom_onset:str = Literal['Sudden', 'Rapid', 'Gradual', 'Fluctuating']
-    symptom_onset:str = Literal(onset_weights.keys())
+    symptom_onset:str = Literal['Sudden', 'Rapid', 'Gradual', 'Fluctuating']
 
     symptoms: list[str] #The str is the id
     notes:str # Realistically I probably do nothing with this. Maybe keyword search?
@@ -71,10 +74,18 @@ def getUrgency(input:UrgencyModel):
     # TODO: Make as a curve that biases old people, and children
     symptom_score += (input.age - 50)/100.0
 
-    symptom_score += onset_weights[input.symptom_onset]
+    # symptom_score += onset_weights[input.symptom_onset]
+    symptom += ml.getModifier(symptom_score, input.symptom_onset)
 
     return {"urgency": min(10, round(symptom_score))}
 
+
+if __name__ == "__main__":
+    uvicorn.run(
+        app=app,
+        host="0.0.0.0",
+        port=32425,  
+    )
 
 
     
